@@ -7,6 +7,7 @@ from app.core.config import DATABASE_URL
 from app.db.database import Base
 
 from app.models import Role, User, Project, ProjectMember
+from app.models import Task
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
