@@ -8,6 +8,8 @@ from app.db.database import Base
 
 from app.models import Role, User
 
+from app.models import Role, User, Project
+
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
