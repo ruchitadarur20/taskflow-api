@@ -5,6 +5,8 @@ from app.core.security import get_current_user, get_db
 from app.schemas.project import ProjectCreate
 from app.services.project_service import create_project
 from app.services.project_service import get_projects_by_owner
+from app.schemas.project_member import ProjectMemberCreate
+from app.services.project_service import create_project, get_projects_by_owner, add_project_member
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -45,3 +47,27 @@ def list_my_projects(
         }
         for project in projects
     ]
+    
+@router.post("/{project_id}/members")
+def add_member_to_project(
+    project_id: int,
+    member_data: ProjectMemberCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    member = add_project_member(
+        db=db,
+        project_id=project_id,
+        user_id=member_data.user_id,
+        role_id=member_data.role_id
+    )
+
+    if not member:
+        return {"message": "User is already a member of this project"}
+
+    return {
+        "message": "Member added successfully",
+        "project_id": member.project_id,
+        "user_id": member.user_id,
+        "role_id": member.role_id
+    }
