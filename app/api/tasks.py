@@ -3,19 +3,21 @@ from sqlalchemy.orm import Session
 from typing import Literal
 
 from app.core.security import get_current_user, get_db
-from app.schemas.task import TaskCreate, TaskStatusUpdate
-from app.services.task_service import (
-    create_task,
-    get_tasks_by_project,
-    update_task_status,
-)
+from app.services.task_service import create_task, get_tasks_by_project, update_task_status
 from app.models.project import Project
 from app.models.task import Task
+from app.schemas.task import (
+    TaskCreate,
+    TaskStatusUpdate,
+    TaskResponse,
+    TaskStatusResponse,
+    TaskDeleteResponse,
+)
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
 
 
-@router.post("/{project_id}/tasks")
+@router.post("/{project_id}/tasks", response_model=TaskResponse)
 def create_project_task(
     project_id: int,
     task_data: TaskCreate,
@@ -42,7 +44,7 @@ def create_project_task(
     }
 
 
-@router.get("/{project_id}/tasks")
+@router.get("/{project_id}/tasks", response_model=list[TaskResponse])
 def list_project_tasks(
     project_id: int,
     skip: int = Query(0, ge=0),
@@ -75,7 +77,7 @@ def list_project_tasks(
     ]
 
 
-@router.put("/tasks/{task_id}/status")
+@router.put("/tasks/{task_id}/status", response_model=TaskStatusResponse)
 def update_task_status_endpoint(
     task_id: int,
     request: TaskStatusUpdate,
@@ -94,7 +96,7 @@ def update_task_status_endpoint(
     }
 
 
-@router.delete("/tasks/{task_id}")
+@router.delete("/tasks/{task_id}", response_model=TaskDeleteResponse)
 def delete_task_endpoint(
     task_id: int,
     db: Session = Depends(get_db),
@@ -113,7 +115,4 @@ def delete_task_endpoint(
     db.delete(task)
     db.commit()
 
-    return {
-        "message": "Task deleted successfully",
-        "task_id": task_id
-    }
+    return {"message": "Task deleted successfully", "task_id": task_id}

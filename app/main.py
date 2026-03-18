@@ -7,7 +7,7 @@ from app.api.users import router as users_router
 from app.api.projects import router as projects_router
 from app.api.tasks import router as tasks_router
 
-app = FastAPI()
+app = FastAPI(title="TaskFlow API")
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -17,11 +17,11 @@ app.include_router(tasks_router)
 
 @app.get("/")
 def root():
-    return {"message": "TaskFlow API running"}
+    return {"message": "TaskFlow API is running"}
 
 
 @app.get("/health")
-def health():
+def health_check():
     return {"status": "ok"}
 
 
