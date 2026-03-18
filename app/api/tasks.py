@@ -8,6 +8,8 @@ from app.services.task_service import get_tasks_by_project
 from app.services.task_service import update_task_status
 from app.schemas.task import TaskStatusUpdate
 from app.services.task_service import delete_task
+from app.models.project import Project
+from app.models.task import Task
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
 
@@ -99,10 +101,19 @@ def delete_task_endpoint(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    task = delete_task(db, task_id)
+    task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
         return {"error": "Task not found"}
+
+    project = db.query(Project).filter(Project.id == task.project_id).first()
+
+    # Only owner can delete
+    if project.owner_id != current_user.id:
+        return {"error": "Not authorized to delete this task"}
+
+    db.delete(task)
+    db.commit()
 
     return {
         "message": "Task deleted successfully",
