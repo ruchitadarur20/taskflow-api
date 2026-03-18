@@ -52,17 +52,4 @@ def update_task_status(db: Session, task_id: int, status: str):
     task.status = status
     db.commit()
     db.refresh(task)
-
-    return task
-
-
-def delete_task(db: Session, task_id: int):
-    task = db.query(Task).filter(Task.id == task_id).first()
-
-    if not task:
-        return None
-
-    db.delete(task)
-    db.commit()
-
     return task
