@@ -1,48 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
-from app.schemas.auth import UserRegister, TokenResponse
-from app.services.auth_service import register_user, login_user
+from app.core.security import create_access_token, verify_password
+from app.db.database import get_db
+from app.models.user import User
+from app.schemas.auth import LoginRequest, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@router.post("/login", response_model=TokenResponse)
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
 
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
 
-@router.post("/register")
-def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    user = register_user(db, user_data)
-
-    if not user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    access_token = create_access_token(data={"sub": user.email})
 
     return {
-        "message": "User registered successfully",
-        "user_id": user.id,
-        "email": user.email
+        "access_token": access_token,
+        "token_type": "bearer",
     }
-
-
-@router.post("/login", response_model=TokenResponse)
-def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
-    token = login_user(
-        db,
-        email=form_data.username,
-        password=form_data.password
-    )
-
-    if not token:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    return token
