@@ -10,6 +10,8 @@ from app.schemas.task import TaskStatusUpdate
 from app.services.task_service import delete_task
 from app.models.project import Project
 from app.models.task import Task
+from app.services.task_service import get_tasks_by_project
+
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
 
@@ -119,3 +121,35 @@ def delete_task_endpoint(
         "message": "Task deleted successfully",
         "task_id": task_id
     }
+    
+@router.get("/{project_id}/tasks")
+def list_project_tasks(
+    project_id: int,
+    skip: int = 0,
+    limit: int = 10,
+    status: str | None = None,
+    assigned_to: int | None = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    tasks = get_tasks_by_project(
+        db=db,
+        project_id=project_id,
+        skip=skip,
+        limit=limit,
+        status=status,
+        assigned_to=assigned_to
+    )
+
+    return [
+        {
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "status": task.status,
+            "project_id": task.project_id,
+            "assigned_to": task.assigned_to,
+            "created_by": task.created_by
+        }
+        for task in tasks
+    ]
