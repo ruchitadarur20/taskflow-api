@@ -5,6 +5,9 @@ from app.core.security import get_current_user, get_db
 from app.schemas.task import TaskCreate
 from app.services.task_service import create_task
 from app.services.task_service import get_tasks_by_project
+from app.services.task_service import update_task_status
+from app.schemas.task import TaskStatusUpdate
+from app.services.task_service import delete_task
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
 
@@ -55,3 +58,53 @@ def list_project_tasks(
         }
         for task in tasks
     ]
+
+from pydantic import BaseModel
+
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str | None = None
+    assigned_to: int | None = None
+    
+from pydantic import BaseModel
+
+class TaskStatusUpdate(BaseModel):
+    status: str
+    
+from app.services.task_service import update_task_status
+from app.schemas.task import TaskStatusUpdate
+
+@router.put("/tasks/{task_id}/status")
+def update_task_status_endpoint(
+    task_id: int,
+    request: TaskStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    task = update_task_status(db, task_id, request.status)
+
+    if not task:
+        return {"error": "Task not found"}
+
+    return {
+        "message": "Task updated successfully",
+        "task_id": task.id,
+        "new_status": task.status
+    }
+
+@router.delete("/tasks/{task_id}")
+def delete_task_endpoint(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    task = delete_task(db, task_id)
+
+    if not task:
+        return {"error": "Task not found"}
+
+    return {
+        "message": "Task deleted successfully",
+        "task_id": task_id
+    }
