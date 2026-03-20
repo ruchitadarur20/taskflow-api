@@ -1,24 +1,21 @@
+from datetime import datetime
+from typing import Literal, Optional
+
 from pydantic import BaseModel
-from typing import Literal
 
 
 class TaskCreate(BaseModel):
     title: str
-    description: str | None = None
-    assigned_to: int | None = None
+    description: Optional[str] = None
+    assigned_to: Optional[int] = None
+    project_id: Optional[int] = None
 
 
-class TaskStatusUpdate(BaseModel):
-    status: Literal["todo", "in_progress", "done"]
-    
-from pydantic import BaseModel
-from typing import Literal
-
-
-class TaskCreate(BaseModel):
-    title: str
-    description: str | None = None
-    assigned_to: int | None = None
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    assigned_to: Optional[int] = None
 
 
 class TaskStatusUpdate(BaseModel):
@@ -28,11 +25,12 @@ class TaskStatusUpdate(BaseModel):
 class TaskResponse(BaseModel):
     id: int
     title: str
-    description: str | None = None
+    description: Optional[str] = None
     status: str
     project_id: int
-    assigned_to: int | None = None
+    assigned_to: Optional[int] = None
     created_by: int
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
