@@ -48,3 +48,14 @@ def add_project_member(db: Session, project_id: int, user_id: int, role_id: int)
     db.refresh(new_member)
 
     return new_member
+
+def is_project_member(db: Session, project_id: int, user_id: int) -> bool:
+    membership = (
+        db.query(ProjectMember)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id
+        )
+        .first()
+    )
+    return membership is not None

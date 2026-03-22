@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Literal
 
 from app.core.security import get_current_user, get_db
-from app.services.task_service import create_task, get_tasks_by_project, update_task_status
 from app.models.project import Project
 from app.models.task import Task
 from app.schemas.task import (
@@ -13,8 +12,21 @@ from app.schemas.task import (
     TaskStatusResponse,
     TaskDeleteResponse,
 )
+from app.services.project_service import is_project_member
+from app.services.task_service import create_task, get_tasks_by_project, update_task_status
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
+
+
+def can_access_project(db: Session, project_id: int, user_id: int) -> bool:
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return False
+
+    if project.owner_id == user_id:
+        return True
+
+    return is_project_member(db, project_id, user_id)
 
 
 @router.post("/{project_id}/tasks", response_model=TaskResponse)
@@ -24,6 +36,19 @@ def create_project_task(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    if not can_access_project(db, project_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this project"
+        )
+
     task = create_task(
         db=db,
         title=task_data.title,
@@ -34,13 +59,14 @@ def create_project_task(
     )
 
     return {
-        "message": "Task created successfully",
-        "task_id": task.id,
+        "id": task.id,
         "title": task.title,
+        "description": task.description,
         "status": task.status,
         "project_id": task.project_id,
         "assigned_to": task.assigned_to,
-        "created_by": task.created_by
+        "created_by": task.created_by,
+        "created_at": task.created_at,
     }
 
 
@@ -49,17 +75,31 @@ def list_project_tasks(
     project_id: int,
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=50),
-    status: Literal["todo", "in_progress", "done"] | None = None,
+    task_status: Literal["todo", "in_progress", "done"] | None = None,
     assigned_to: int | None = Query(None, ge=1),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
+    project = db.query(Project).filter(Project.id == project_id).first()
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    if project.owner_id != current_user.id and not is_project_member(db, project_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this project"
+        )
+
     tasks = get_tasks_by_project(
         db=db,
         project_id=project_id,
         skip=skip,
         limit=limit,
-        status=status,
+        status=task_status,
         assigned_to=assigned_to
     )
 
@@ -71,7 +111,8 @@ def list_project_tasks(
             "status": task.status,
             "project_id": task.project_id,
             "assigned_to": task.assigned_to,
-            "created_by": task.created_by
+            "created_by": task.created_by,
+            "created_at": task.created_at,
         }
         for task in tasks
     ]
@@ -84,15 +125,25 @@ def update_task_status_endpoint(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    task = update_task_status(db, task_id, request.status)
-
+    task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
-        return {"error": "Task not found"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+
+    if not can_access_project(db, task.project_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this task"
+        )
+
+    updated_task = update_task_status(db, task_id, request.status)
 
     return {
         "message": "Task updated successfully",
-        "task_id": task.id,
-        "new_status": task.status
+        "task_id": updated_task.id,
+        "new_status": updated_task.status
     }
 
 
@@ -105,14 +156,23 @@ def delete_task_endpoint(
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
-        return {"error": "Task not found"}
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
 
     project = db.query(Project).filter(Project.id == task.project_id).first()
 
     if project.owner_id != current_user.id:
-        return {"error": "Not authorized to delete this task"}
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can delete tasks"
+        )
 
     db.delete(task)
     db.commit()
 
-    return {"message": "Task deleted successfully", "task_id": task_id}
+    return {
+        "message": "Task deleted successfully",
+        "task_id": task_id
+    }
