@@ -15,8 +15,14 @@ def create_project(db: Session, name: str, description: str | None, owner_id: in
     db.refresh(new_project)
     return new_project
 
+
 def get_projects_by_owner(db: Session, owner_id: int):
     return db.query(Project).filter(Project.owner_id == owner_id).all()
+
+
+def get_project_by_id(db: Session, project_id: int):
+    return db.query(Project).filter(Project.id == project_id).first()
+
 
 def add_project_member(db: Session, project_id: int, user_id: int, role_id: int):
     existing_member = (

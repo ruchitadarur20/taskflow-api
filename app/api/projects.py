@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user, get_db
 from app.schemas.project import ProjectCreate
-from app.services.project_service import create_project
-from app.services.project_service import get_projects_by_owner
 from app.schemas.project_member import ProjectMemberCreate
-from app.services.project_service import create_project, get_projects_by_owner, add_project_member
+from app.services.project_service import (
+    add_project_member,
+    create_project,
+    get_project_by_id,
+    get_projects_by_owner,
+)
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -30,7 +33,8 @@ def create_new_project(
         "name": project.name,
         "owner_id": project.owner_id
     }
-    
+
+
 @router.get("/my-projects")
 def list_my_projects(
     db: Session = Depends(get_db),
@@ -47,7 +51,8 @@ def list_my_projects(
         }
         for project in projects
     ]
-    
+
+
 @router.post("/{project_id}/members")
 def add_member_to_project(
     project_id: int,
@@ -55,6 +60,20 @@ def add_member_to_project(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
+    project = get_project_by_id(db, project_id)
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found"
+        )
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project owner can add members"
+        )
+
     member = add_project_member(
         db=db,
         project_id=project_id,
@@ -63,7 +82,10 @@ def add_member_to_project(
     )
 
     if not member:
-        return {"message": "User is already a member of this project"}
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a member of this project"
+        )
 
     return {
         "message": "Member added successfully",
