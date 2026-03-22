@@ -1,19 +1,58 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    hash_password,
+    verify_password,
+)
 from app.db.database import get_db
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import TokenResponse
 
+from jose import jwt, JWTError
+from app.core.config import SECRET_KEY, ALGORITHM
+from app.schemas.auth import RefreshTokenRequest
+
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post("/register")
+def register(
+    full_name: str,
+    email: str,
+    password: str,
+    db: Session = Depends(get_db),
+):
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = User(
+        full_name=full_name,
+        email=email,
+        hashed_password=hash_password(password),
+        role_id=1,
+        is_active=True,
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {"message": "User registered successfully"}
 
 
 @router.post("/login", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.email == form_data.username).first()
 
@@ -24,8 +63,68 @@ def login(
         )
 
     access_token = create_access_token(data={"sub": user.email})
+    refresh_token = create_refresh_token(data={"sub": user.email})
+
+    refresh_token_obj = RefreshToken(
+        token=refresh_token,
+        user_id=user.id,
+        is_revoked=False,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+    )
+
+    db.add(refresh_token_obj)
+    db.commit()
 
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
     }
+
+@router.post("/refresh")
+def refresh_token(
+    payload: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
+    token = payload.refresh_token
+
+    try:
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = decoded.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    db_token = db.query(RefreshToken).filter(
+        RefreshToken.token == token,
+        RefreshToken.is_revoked == False
+    ).first()
+
+    if not db_token:
+        raise HTTPException(status_code=401, detail="Invalid or revoked token")
+
+    new_access_token = create_access_token(data={"sub": email})
+
+    return {
+        "access_token": new_access_token,
+        "token_type": "bearer"
+    }
+
+@router.post("/logout")
+def logout(
+    payload: RefreshTokenRequest,
+    db: Session = Depends(get_db)
+):
+    db_token = db.query(RefreshToken).filter(
+        RefreshToken.token == payload.refresh_token,
+        RefreshToken.is_revoked == False
+    ).first()
+
+    if not db_token:
+        raise HTTPException(status_code=401, detail="Invalid or already revoked token")
+
+    db_token.is_revoked = True
+    db.commit()
+
+    return {"message": "Logged out successfully"}
