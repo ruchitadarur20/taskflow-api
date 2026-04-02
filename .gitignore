@@ -11,3 +11,8 @@ venv/
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+
+# Celery Beat schedule
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal

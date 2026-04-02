@@ -26,6 +26,10 @@ def create_task(
     return new_task
 
 
+def get_task_by_id(db: Session, task_id: int):
+    return db.query(Task).filter(Task.id == task_id).first()
+
+
 def get_tasks_by_project(
     db: Session,
     project_id: int,
