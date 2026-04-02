@@ -1,13 +1,11 @@
 from fastapi import APIRouter, Depends
+
 from app.core.security import get_current_user
+from app.schemas.user import UserResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserResponse)
 def get_me(current_user=Depends(get_current_user)):
-    return {
-        "message": "Protected route working",
-        "user": current_user.email
-    }
-    
+    return current_user

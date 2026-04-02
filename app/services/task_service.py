@@ -8,7 +8,8 @@ def create_task(
     description: str | None,
     project_id: int,
     assigned_to: int | None,
-    created_by: int
+    created_by: int,
+    due_date=None,
 ):
     new_task = Task(
         title=title,
@@ -16,7 +17,8 @@ def create_task(
         status="todo",
         project_id=project_id,
         assigned_to=assigned_to,
-        created_by=created_by
+        created_by=created_by,
+        due_date=due_date,
     )
     db.add(new_task)
     db.commit()

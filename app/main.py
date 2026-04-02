@@ -1,18 +1,30 @@
 from fastapi import FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.api.auth import router as auth_router
 from app.api.projects import router as projects_router
 from app.api.tasks import router as tasks_router
 from app.api.users import router as users_router
+from app.api.websocket import router as ws_router
+from app.core.limiter import limiter
 from app.db.database import engine
 
-app = FastAPI(title="TaskFlow API")
+app = FastAPI(
+    title="TaskFlow API",
+    description="A task and project management API with real-time notifications.",
+    version="1.0.0",
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(projects_router)
 app.include_router(tasks_router)
+app.include_router(ws_router)
 
 
 @app.get("/")

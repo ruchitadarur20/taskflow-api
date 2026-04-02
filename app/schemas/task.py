@@ -9,6 +9,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     assigned_to: Optional[int] = None
     project_id: Optional[int] = None
+    due_date: Optional[datetime] = None
 
 
 class TaskUpdate(BaseModel):
@@ -30,6 +31,7 @@ class TaskResponse(BaseModel):
     project_id: int
     assigned_to: Optional[int] = None
     created_by: int
+    due_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
     class Config:
