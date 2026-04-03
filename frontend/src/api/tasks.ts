@@ -6,7 +6,7 @@ export const getTasks = async (projectId: number) => {
 }
 
 export const getTask = async (taskId: number) => {
-  const res = await api.get(`/tasks/${taskId}`)
+  const res = await api.get(`/projects/tasks/${taskId}`)
   return res.data
 }
 
@@ -21,11 +21,11 @@ export const createTask = async (projectId: number, data: {
 }
 
 export const updateTaskStatus = async (taskId: number, status: string) => {
-  const res = await api.patch(`/tasks/${taskId}/status`, { status })
+  const res = await api.put(`/projects/tasks/${taskId}/status`, { status })
   return res.data
 }
 
 export const deleteTask = async (taskId: number) => {
-  const res = await api.delete(`/tasks/${taskId}`)
+  const res = await api.delete(`/projects/tasks/${taskId}`)
   return res.data
 }

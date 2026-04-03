@@ -23,7 +23,6 @@ from app.services.task_service import create_task, get_tasks_by_project, update_
 
 router = APIRouter(prefix="/projects", tags=["Tasks"])
 
-
 def can_access_project(db: Session, project_id: int, user_id: int) -> bool:
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -94,6 +93,20 @@ def list_project_tasks(
         status=task_status, assigned_to=assigned_to
     )
 
+@router.get("/tasks/{task_id}", response_model=TaskResponse)
+def get_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    if not can_access_project(db, task.project_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this task")
+
+    return task
 
 @router.put("/tasks/{task_id}/status", response_model=TaskStatusResponse)
 def update_task_status_endpoint(
