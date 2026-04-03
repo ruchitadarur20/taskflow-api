@@ -17,6 +17,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await login(email, password)
+      localStorage.setItem('access_token', data.access_token)
       const user = await getMe()
       setAuth(user, data.access_token, data.refresh_token)
       navigate('/projects')

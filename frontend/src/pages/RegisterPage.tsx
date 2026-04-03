@@ -19,13 +19,19 @@ export default function RegisterPage() {
     try {
       await register(fullName, email, password)
       const data = await login(email, password)
+      localStorage.setItem('access_token', data.access_token)  // save token first
       const user = await getMe()
       setAuth(user, data.access_token, data.refresh_token)
       navigate('/projects')
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { detail?: string } } }
-        setError(axiosErr.response?.data?.detail || 'Registration failed')
+        const axiosErr = err as { response?: { data?: { detail?: unknown } } }
+        const detail = axiosErr.response?.data?.detail
+        if (typeof detail === 'string') {
+          setError(detail)
+        } else {
+          setError('Registration failed')
+        }
       } else {
         setError('Registration failed')
       }
