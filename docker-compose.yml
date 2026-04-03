@@ -30,7 +30,7 @@ services:
       retries: 5
 
   api:
-    build: .
+    build: ./backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -48,7 +48,7 @@ services:
       sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
   celery_worker:
-    build: .
+    build: ./backend
     restart: unless-stopped
     env_file:
       - .env
@@ -63,7 +63,7 @@ services:
     command: celery -A app.worker.celery_app worker --loglevel=info
 
   celery_beat:
-    build: .
+    build: ./backend
     restart: unless-stopped
     env_file:
       - .env
