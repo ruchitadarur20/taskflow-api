@@ -53,3 +53,15 @@ def test_db():
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
     return {"database": "connected"}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://taskflow-1o0cll5tv-ruchita-darurs-projects.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
