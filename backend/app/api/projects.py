@@ -84,3 +84,20 @@ def get_activity(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     return get_project_activity(db, project_id=project_id, limit=limit)
+
+@router.delete("/{project_id}")
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    project = get_project_by_id(db, project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the project owner can delete this project")
+
+    db.delete(project)
+    db.commit()
+    return {"message": "Project deleted successfully", "project_id": project_id}

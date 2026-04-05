@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getProjects, createProject } from '../api/projects'
 import type { Project } from '../types'
 import Navbar from '../components/Navbar'
+import { getProjects, createProject, deleteProject } from '../api/projects'
 
 function ProjectSkeleton() {
   return (
@@ -33,6 +33,13 @@ export default function ProjectsPage() {
       setName('')
       setDescription('')
       setShowForm(false)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (projectId: number) => deleteProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
     },
   })
 
@@ -96,11 +103,25 @@ export default function ProjectsPage() {
             {projects.map((p) => (
               <div
                 key={p.id}
-                onClick={() => navigate(`/projects/${p.id}`)}
-                className="bg-white border border-gray-200 rounded-xl p-5 cursor-pointer hover:shadow-md hover:border-indigo-300 transition"
+                className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md hover:border-indigo-300 transition"
               >
-                <h2 className="font-semibold text-gray-800">{p.name}</h2>
-                {p.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{p.description}</p>}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 cursor-pointer" onClick={() => navigate(`/projects/${p.id}`)}>
+                    <h2 className="font-semibold text-gray-800">{p.name}</h2>
+                    {p.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{p.description}</p>}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`Delete "${p.name}"? This cannot be undone.`)) {
+                        deleteMutation.mutate(p.id)
+                      }
+                    }}
+                    className="text-red-400 hover:text-red-600 text-sm ml-4 shrink-0"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

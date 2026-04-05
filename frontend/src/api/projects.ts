@@ -14,3 +14,8 @@ export const getActivity = async (projectId: number) => {
   const res = await api.get(`/projects/${projectId}/activity`)
   return res.data
 }
+
+export const deleteProject = async (projectId: number) => {
+  const res = await api.delete(`/projects/${projectId}`)
+  return res.data
+}
